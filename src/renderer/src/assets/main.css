@@ -1,75 +1,3 @@
-:root {
-  --theme-dark-000-color: #000;
-  --theme-dark-222-color: #222;
-  --theme-dark-444-color: #444;
-  --theme-dark-666-color: #666;
-  --theme-dark-888-color: #888;
-
-  --theme-dark-111-color: #111;
-  --theme-dark-333-color: #333;
-  --theme-dark-777-color: #777;
-  --theme-dark-999-color: #999;
-
-
-  --theme-light-fff-color: #fff;
-  --theme-light-eee-color: #eee;
-  --theme-light-ddd-color: #ddd;
-  --theme-light-ccc-color: #ccc;
-  --theme-light-bbb-color: #bbb;
-  --theme-light-aaa-color: #aaa;
-
-  --theme-dark-rgba2-color: rgba(0, 0, 0, .2);
-  --theme-dark-rgba4-color: rgba(0, 0, 0, .4);
-  --theme-dark-rgba6-color: rgba(0, 0, 0, .6);
-  --theme-dark-rgba8-color: rgba(0, 0, 0, .8);
-
-  --theme-dark-rgba1-color: rgba(0, 0, 0, .1);
-  --theme-dark-rgba3-color: rgba(0, 0, 0, .3);
-  --theme-dark-rgba5-color: rgba(0, 0, 0, .5);
-  --theme-dark-rgba7-color: rgba(0, 0, 0, .7);
-  --theme-dark-rgba9-color: rgba(0, 0, 0, .9);
-
-  --theme-light-rgba2-color: rgba(255, 255, 255, .2);
-  --theme-light-rgba4-color: rgba(255, 255, 255, .4);
-  --theme-light-rgba6-color: rgba(255, 255, 255, .6);
-  --theme-light-rgba8-color: rgba(255, 255, 255, .8);
-
-  --muted-btn-color: red;
-
-  --theme-color: #00ff88;
-
-}
-
-[data-theme="dark"] {
-  --theme-dark-body: #111;
-  --theme-dark-window: #222;
-  --theme-dark-window-title: #999;
-  --theme-dark-control-bg: rgba(0, 0, 0, .2);
-  --theme-dark-control-fc: #fff;
-  --theme-dark-control-li-h: rgba(0, 0, 0, .8);
-  --theme-dark-control-li-a: rgba(0, 0, 0, .6);
-  --theme-dark-dialog-bg: #444;
-  --theme-dark-dialog-fc: #000;
-  --theme-dark-dialog-win-fc: #bbb;
-  --theme-dark-dialog-win-nav-bg: #888;
-  --theme-dark-dialog-win-nav-fc: #fff;
-}
-
-[data-theme="light"] {
-  --theme-dark-body: #eee;
-  --theme-dark-window: #ddd;
-  --theme-dark-window-title: #222;
-  --theme-dark-control-bg: rgba(255, 255, 255, .2);
-  --theme-dark-control-fc: #000;
-  --theme-dark-control-li-h: rgba(255, 255, 255, .8);
-  --theme-dark-control-li-a: rgba(255, 255, 255, .6);
-  --theme-dark-dialog-bg: #bbb;
-  --theme-dark-dialog-fc: #fff;
-  --theme-dark-dialog-win-fc: #111;
-  --theme-dark-dialog-win-nav-bg: #aaa;
-  --theme-dark-dialog-win-nav-fc: #000;
-}
-
 html,
 body,
 #app {
@@ -89,7 +17,7 @@ body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: var(--theme-dark-body);
+  /* background-color: var(--theme-dark-body); */
 }
 
 body::-webkit-scrollbar {

@@ -1,11 +1,11 @@
 import { app, BrowserWindow } from 'electron'
 
-// import { electronApp, optimizer } from '@electron-toolkit/utils'
-import { electronApp } from '@electron-toolkit/utils'
+import { electronApp, optimizer } from '@electron-toolkit/utils'
+// import { electronApp } from '@electron-toolkit/utils'
 
 import { createWindow, mainWinHandle } from './win_config';
 
-import { audioProtocol, mainVideoHandle, protocolHandler, videoProtocol, videoSubtitleProtocol } from './protocol';
+import { mainVideoHandle, protocolHandler, videoProtocol, videoSubtitleProtocol } from './protocol';
 import { mainHanlde } from './video';
 
 
@@ -13,12 +13,13 @@ protocolHandler();
 
 let mainWindow: BrowserWindow;
 
+// getSubtitle();
 
 app.whenReady().then(() => {
 
   videoProtocol();
-  audioProtocol();
-  videoSubtitleProtocol();
+  // audioProtocol();
+  videoSubtitleProtocol()
   mainVideoHandle();
   // videoInfoProtocol();
   // Set app user model id for windows
@@ -27,9 +28,9 @@ app.whenReady().then(() => {
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  // app.on('browser-window-created', (_, window) => {
-  //   optimizer.watchWindowShortcuts(window)
-  // })
+  app.on('browser-window-created', (_, window) => {
+    optimizer.watchWindowShortcuts(window)
+  })
 
   mainWindow = createWindow()
   mainWinHandle(mainWindow)
@@ -49,6 +50,10 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+process.on('uncaughtException', err => {
+  console.error('有一个未捕获的错误', err)
+  // process.exit(1) //强制性的（根据 Node.js 文档）
 })
 
 // In this file you can include the rest of your app"s specific main process

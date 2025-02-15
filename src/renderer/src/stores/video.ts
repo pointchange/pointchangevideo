@@ -11,34 +11,29 @@ export const useVideoStore = defineStore('video', {
     state: () => ({
         video_raw: null as any,
         video_info: {
-            title: '',
+            currentStream: null as any,
+            title: 'PCV',
             src: '',
             currentPlaying: '',
             duration: 0,
             currentTime: 0,
             currentTimeStr: '00:00:00',
             durationStr: '00:00:00',
-            path: ''
+            path: '',
         },
         videoProtocol: 'local-video://',
         audioProtocol: 'local-audio://',
         audio_info: {
+            currentStream: null as any,
             src: '',
             index: 0,
+            streamIndex: 0
         },
         subtitle_info: {
+            currentStream: null as any,
             src: '',
             index: 0,
-        },
-        subtitleStyle: {
-            color: '#ffffff',
-            fontSize: '32px',
-            fontFamily: 'inherit',
-            fontWeight: 'normal',
-            textShadow: '',
-            backgroundColor: 'rgba(0,0,0,.5)',
-            visibility: 'visible',
-            opacity: 1,
+            streamIndex: 0
         },
         list: [
             {
@@ -48,20 +43,31 @@ export const useVideoStore = defineStore('video', {
             }
         ],
         width: 256,
-        // searchHistoryList: ['']
+        timeId: 0,
+        srt: '',
+        save: {
+            video_info: null as any,
+            audio_info: null as any,
+            subtitle_info: null as any,
+            readSave: false,
+        }
     }),
     getters: {
         video_raw_handle(state) {
             return (str: string) => {
                 if (state.video_raw) {
+
+                    let arr = state.video_raw.streams.filter((v: { codec_type: string; }) => v.codec_type === 'video');
+
                     switch (str) {
                         case 'codec_long_name':
-                            return state.video_raw.streams[0].codec_long_name;
+                            return arr[0].codec_long_name;
                         case 'size':
-                            return state.video_raw.format.size; case 'coded_height':
-                            return state.video_raw.streams[0].coded_height;
+                            return state.video_raw.format.size;
+                        case 'coded_height':
+                            return arr[0].coded_height;
                         case 'coded_width':
-                            return state.video_raw.streams[0].coded_width;
+                            return arr[0].coded_width;
                         default:
                             return 'unknown'
                     }
@@ -79,11 +85,20 @@ export const useVideoStore = defineStore('video', {
                 }
             }
         },
-        getFontSize(state) {
-            return state.subtitleStyle.fontSize.split('px')[0];
+        getList(state) {
+            return (str: string) => {
+                if (str) {
+                    return state.list.filter(v => new RegExp(str, 'ig').test(v.name))
+                } else {
+                    return state.list;
+                }
+            }
         }
     },
     actions: {
+        init() {
+
+        },
         filterList(keyword: string) {
             if (keyword === '') {
                 return this.list;
@@ -107,7 +122,6 @@ export const useVideoStore = defineStore('video', {
         },
         changeDuration() {
             this.video_info.durationStr = this.countTime(this.video_info.duration);
-            // console.log(this.video_info.durationStr)
         },
         changeCurrentTime(time: number) {
             this.video_info.currentTimeStr = this.countTime(time);
@@ -122,24 +136,24 @@ export const useVideoStore = defineStore('video', {
                 }
 
             })
-            console.log(src);
             return src;
         },
         async playCurrentVideo(path: string, name: string) {
-            //
-            this.audio_info.index = 0;
-
-            this.audio_info.src = this.audioProtocol + path;
-            this.video_info.src = this.videoProtocol + path;
-
-
             this.video_raw = await window.electron.ipcRenderer.invoke('on-get-video-infor', path);
-            console.log(this.video_raw);
             this.video_info.duration = this.video_raw.format.duration;
+            this.video_info.currentStream = this.video_raw.streams.filter((v: { codec_type: string; }) => v.codec_type === 'video')[0];
 
             this.changeDuration()
             this.video_info.path = path;
             this.video_info.title = name;
+
+            if (!this.save.readSave) {
+                this.audio_info.index = 0;
+                this.audio_info.streamIndex = this.getAudioStreamIndex('audio');
+            }
+
+            this.audio_info.src = this.videoProtocol + path + `?type=audio&&streamIndex=${this.audio_info.streamIndex}`;
+            this.video_info.src = this.videoProtocol + path + `?type=video`;
 
             this.list.forEach(v => {
                 if (v.path === path) {
@@ -147,20 +161,21 @@ export const useVideoStore = defineStore('video', {
                 } else {
                     v.isPlaying = false;
                 }
-
             })
+            const hasSubtitle = this.video_raw.streams.find(v => v.codec_type === 'subtitle');
+            if (hasSubtitle) {
+                fetch(this.videoProtocol + path + `?type=subtitle&&index=${this.subtitle_info.index}&&streamIndex=${this.subtitle_info.streamIndex}`).then((res) => res.blob()).then((blob) => {
+                    if (!this.save.readSave) {
+                        this.subtitle_info.index = 0;
+                        this.subtitle_info.streamIndex = this.getAudioStreamIndex('subtitle');
+                    }
+                    this.subtitle_info.src = URL.createObjectURL(blob);
+                })
 
-            fetch('local-subtitle://' + path).then((res) => {
-                if (res.status === 404) {
-                    this.subtitle_info.src = ''
-                }
-                return res.blob();
+            } else {
+                this.subtitle_info.src = ''
+            }
 
-            }).then(res => {
-                this.subtitle_info.src = URL.createObjectURL(res);
-            }).catch(e => {
-                console.log('error: ', e);
-            })
         },
         pre() {
             let index = this.list.findIndex(v => v.path === this.video_info.path)
@@ -180,39 +195,38 @@ export const useVideoStore = defineStore('video', {
                 this.playCurrentVideo(this.list[index + 1].path, this.list[index + 1].name);
             }
         },
+        getAudioStreamIndex(type: string) {
+            const arr = this.getStream(type)
+            let streamIndex = 0;
+            if (arr.length > 0) {
+                this.audio_info.currentStream = arr[this.audio_info.index];
+                streamIndex = this.audio_info.currentStream.index
+            }
+            return streamIndex;
+        },
         changeAudioStream(v: number, currentTime: number) {
-            this.audio_info.src = this.audioProtocol + this.video_info.path + `?start=${currentTime}&&index=${v}`;
-            console.log(this.audio_info.src)
+            this.audio_info.streamIndex = this.getAudioStreamIndex('audio');
+            this.audio_info.src = this.videoProtocol + this.video_info.path + `?type=audio&&start=${currentTime}&&index=${v}&&streamIndex=${this.audio_info.streamIndex}`;
         },
         async changeSubtitleStream(v: string) {
-            console.log(v);
-            const res = await fetch('local-subtitle://' + this.video_info.path + `?index=${v}`);
+            this.subtitle_info.streamIndex = this.getAudioStreamIndex('subtitle');
+            const res = await fetch('local-subtitle://' + this.video_info.path + `?index=${v}&&streamIndex=${this.subtitle_info.streamIndex}`);
 
             this.subtitle_info.src = URL.createObjectURL(await res.blob());
         },
-        changeSubtitleStyle(v: any, property: string) {
-            switch (property) {
-                case 'fontSize':
-                    this.subtitleStyle[property] = v + 'px';
-                    break;
-                case 'visibility':
-                    this.subtitleStyle[property] = v ? 'visibility' : 'hidden';
-                    break;
-                default:
-                    this.subtitleStyle[property] = v;
-                    break;
-            }
-
+        saveHandle() {
+            this.save.video_info = this.video_info;
+            this.save.audio_info = this.audio_info;
+            this.save.subtitle_info = this.subtitle_info;
+            this.save.readSave = true;
         },
-        // changeSubtitleFontSize(v: string) {
-        //     this.subtitleStyle.fontSize = v + 'px';
-        // },
-        // changeSubtitleColor(v: string) {
-        //     this.subtitleStyle.color = v;
-        // }
-
+        readSave() {
+            this.audio_info = this.save.audio_info
+            this.subtitle_info = this.save.subtitle_info
+            this.playCurrentVideo(this.save.video_info.path, this.save.video_info.title)
+        }
     },
     persist: {
-        pick: ['list'],
+        pick: ['list', 'save'],
     }
 })

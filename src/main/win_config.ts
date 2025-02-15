@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, nativeTheme } from 'electron'
+import { BrowserWindow, ipcMain, shell } from 'electron'
 import { is } from "@electron-toolkit/utils";
 import { join } from "path";
 import icon from '../../resources/icon.png?asset'
@@ -7,17 +7,10 @@ import icon from '../../resources/icon.png?asset'
 // let mainWindow: BrowserWindow;
 function createWindow(): BrowserWindow {
     const mainWindow = new BrowserWindow({
-        // frame: false,
+        frame: false,
         width: 1300,
         height: 700,
         show: false,
-        titleBarStyle: 'hidden',
-        titleBarOverlay: {
-            color: '#222',
-            height: 30
-        },
-        // titleBarStyle: ('default' | 'hidden' | 'hiddenInset' | 'customButtonsOnHover');
-        // ...(process.platform !== 'darwin' ? { titleBarOverlay: true } : {}),
         autoHideMenuBar: true,
         ...(process.platform === 'linux' ? { icon } : {}),
         webPreferences: {
@@ -25,6 +18,9 @@ function createWindow(): BrowserWindow {
             sandbox: false
         }
     })
+    mainWindow.on('close', _e => {
+        mainWindow.webContents.send('on-sava-current-video', true)
+    });
 
     mainWindow.on('ready-to-show', () => {
         mainWindow.show()
@@ -39,33 +35,24 @@ function createWindow(): BrowserWindow {
     return mainWindow;
 }
 function mainWinHandle(win: BrowserWindow) {
-    ipcMain.handle('on-close-win', () => {
+    ipcMain.on('on-close-win', () => {
         win.close();
     })
-    ipcMain.handle('on-fullScreen-win', (_e, bool) => {
+    ipcMain.on('on-fullScreen-win', (_e, bool) => {
         if (bool) {
             win.maximize()
         } else {
             win.unmaximize();
         }
     })
-    ipcMain.handle('on-minimizable-win', () => {
+    ipcMain.on('on-fullScreen-win-bar', (_e, bool) => {
+        win.fullScreen = bool;
+    })
+    ipcMain.on('on-minimizable-win', () => {
         win.minimize();
     })
-    ipcMain.on('dark-mode:toggle', (_e, v) => {
-        nativeTheme.themeSource = v
-        if (v === 'dark') {
-            win.setTitleBarOverlay({
-                color: '#222',
-                symbolColor: '#bbb'
-            })
-        } else {
-            win.setBackgroundColor('#ffffff')
-            win.setTitleBarOverlay({
-                color: '#dddddd',
-                symbolColor: '#000'
-            })
-        }
+    ipcMain.on('on-open-file-path', (_e, path) => {
+        shell.showItemInFolder(path);
     })
 }
 

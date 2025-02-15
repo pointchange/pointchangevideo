@@ -1,6 +1,5 @@
 import { BrowserWindow, ipcMain, dialog } from 'electron'
 import { join, parse } from 'path'
-// import { createReadStream } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import ffmpeg from 'fluent-ffmpeg';
 import { path as ffmpegPath } from '@ffmpeg-installer/ffmpeg';
@@ -92,16 +91,22 @@ async function openVideoFile(win: BrowserWindow) {
         return pathParse(arr);
     }
 }
+
+let videoInfo: ffmpeg.FfprobeData;
+let videoPath = '';
 async function getVideoInfor(path: string): Promise<ffmpeg.FfprobeData | any> {
+    videoPath = path;
     return await new Promise((res, rej) => {
         ffmpeg(path).ffprobe((err, data) => {
             if (err) {
                 rej(err);
             }
+            videoInfo = data;
             res(data)
         })
     })
 }
+
 
 function mainHanlde(win: BrowserWindow) {
     ipcMain.handle('on-open-file', () => openVideoFile(win));
@@ -109,5 +114,8 @@ function mainHanlde(win: BrowserWindow) {
 }
 
 export {
-    mainHanlde
+    mainHanlde,
+    getVideoInfor,
+    videoInfo,
+    videoPath
 }
