@@ -1,4 +1,4 @@
-import { ipcMain, protocol } from 'electron'
+import { BrowserWindow, ipcMain, protocol } from 'electron'
 import { stat } from 'node:fs/promises';
 import ffmpeg from 'fluent-ffmpeg';
 import { path as ffmpegPath } from '@ffmpeg-installer/ffmpeg';
@@ -164,7 +164,7 @@ let isAudioHardwareDecode = false;
 //     // '-min_seg_duration 5000',
 //     // '-max_delay 50'
 // ].filter(Boolean);
-function videoProtocol() {
+function videoProtocol(win: BrowserWindow) {
     protocol.handle('local-video', async (request) => {
         //get video address
         const url = new URL(request.url);
@@ -272,18 +272,10 @@ function videoProtocol() {
             audio.streamIndex = -1;
             const index = Number(url.searchParams.get('index'));
             const sIndex = Number(url.searchParams.get('streamIndex'));
+
             if (index !== audio.streamIndex) {
                 audio.streamIndex = index;
-                for (let i = 0; i < saveVideoInfo.streams.length; i++) {
-                    const v = saveVideoInfo.streams[i];
-                    if (v.codec_type === 'audio') {
-                        // audio.streamNumber++;
-                        if (v.index === sIndex) {
-                            audio.stream = v;
-                        }
-                    }
-                }
-
+                audio.stream = saveVideoInfo.streams[sIndex];
                 audio.canPlayCodec = AUDIOCODEC.find(item => {
                     if (audio.stream?.codec_name && item.toLowerCase() === audio.stream?.codec_name.toLowerCase()) {
                         return item;
@@ -292,6 +284,9 @@ function videoProtocol() {
                     }
                 });
             }
+
+            // console.log(audio, audio.streamNumber, index, sIndex, audio.streamIndex);
+
             if (audio.canPlayCodec && audio.streamNumber === 1) {
                 // console.log('hard')
                 return webVideoCanPlayCodecHandle();
@@ -304,8 +299,8 @@ function videoProtocol() {
                     '-vn',
                     '-sn',
                     `-map 0:a:${audio.streamIndex}`,
-                    `-ar ${audio.stream?.sample_rate !== 0 ? audio.stream?.sample_rate : '44100'}`,
-                    `-b:a ${audio.stream?.bit_rate !== 'N/A' ? audio.stream?.bit_rate : '128k'}`,
+                    // `-ar ${audio.stream?.sample_rate !== 0 ? audio.stream?.sample_rate : '44100'}`,
+                    // `-b:a ${audio.stream?.bit_rate !== 'N/A' ? audio.stream?.bit_rate : '128k'}`,
                     '-preset ultrafast',
                     '-tune zerolatency',
                     '-hide_banner',
@@ -340,7 +335,11 @@ function videoProtocol() {
                     .format('webvtt')
                     .on('error', function (_err) {
                         // console.log('An error occurred: ' + err.message);
-                    });
+                    })
+                    .on('progress', function (progress) {
+                        // console.log('Processing: ' + progress.percent + '% done');
+                        win.webContents.send('on-subtitle-loading', progress.percent)
+                    })
                 let ffstream = f.pipe();
                 ffstream.on('data', function (chunk) {
                     data += chunk
@@ -363,73 +362,9 @@ function videoProtocol() {
     })
 }
 
-function audioProtocol() {
-    // protocol.handle('local-audio', async (request) => {
-
-    // })
-}
-
-function videoSubtitleProtocol() {
-    protocol.handle('local-subtitle', async (request) => {
-        const url = new URL(request.url);
-        let path = decodeURI(url.host + ':' + url.pathname);
-        const subtitleNum: number = await new Promise((res, rej) => {
-            ffmpeg(path).ffprobe((err: any, data: { streams: any; }) => {
-                if (err) rej(err);
-                const { streams } = data;
-                let subtitleNum = 0;
-                for (let i = 0; i < streams.length; i++) {
-                    if (streams[i].codec_type === 'subtitle') {
-                        subtitleNum++;
-                    }
-                }
-                res(subtitleNum);
-            })
-        })
-        if (subtitleNum === 0) return new Response('', {
-            status: 404
-        });
-        let index = Number(url.searchParams.get('index'));
-        const outputOptionsArr = [
-            `-map 0:s:${index}`,
-            '-movflags frag_keyframe+empty_moov+default_base_moof',
-        ].filter(Boolean);
-
-        const f: ffmpeg.FfmpegCommand = ffmpeg(path)
-            // f.input(path)
-            .format('webvtt')
-            .on('error', function (_err: { message: string; }, _stdout: any, _stderr: any) {
-                // console.log('Cannot process video: ' + _err.message);
-                // f.kill('SIGKILL');
-            })
-            .on('codecData', function (_data) {
-                // console.log('Input is ' + data.audio + ' audio ' +'with ' + data.video + ' video');
-            })
-            .outputOptions(outputOptionsArr)
-        let data = '';
-        await new Promise((res) => {
-            f.pipe().on('data', chunk => {
-                data += chunk
-            }).on('end', () => {
-                res(true);
-                // f.kill()
-            })
-        })
-
-        const response = new Response(data, {
-            headers: {
-                "Connection": 'keep-alive',
-                "Access-Control-Allow-Credentials": "true",
-                "Accept-Ranges": "bytes"
-            }
-        });
-        return response;
-    })
-}
-
 function mainVideoHandle() {
     ipcMain.handle('on-change-video-decode', () => isVideoHardwareDecode);
     ipcMain.handle('on-change-audio-decode', () => isAudioHardwareDecode);
 }
 
-export { protocolHandler, videoProtocol, mainVideoHandle, videoSubtitleProtocol, audioProtocol }
+export { protocolHandler, videoProtocol, mainVideoHandle }

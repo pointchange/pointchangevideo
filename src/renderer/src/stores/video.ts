@@ -33,7 +33,8 @@ export const useVideoStore = defineStore('video', {
             currentStream: null as any,
             src: '',
             index: 0,
-            streamIndex: 0
+            streamIndex: 0,
+            loading: false,
         },
         list: [
             {
@@ -139,6 +140,7 @@ export const useVideoStore = defineStore('video', {
             return src;
         },
         async playCurrentVideo(path: string, name: string) {
+            if (path === this.video_info.path) return;
             this.video_raw = await window.electron.ipcRenderer.invoke('on-get-video-infor', path);
             this.video_info.duration = this.video_raw.format.duration;
             this.video_info.currentStream = this.video_raw.streams.filter((v: { codec_type: string; }) => v.codec_type === 'video')[0];
@@ -146,7 +148,6 @@ export const useVideoStore = defineStore('video', {
             this.changeDuration()
             this.video_info.path = path;
             this.video_info.title = name;
-
             if (!this.save.readSave) {
                 this.audio_info.index = 0;
                 this.audio_info.streamIndex = this.getAudioStreamIndex('audio');
@@ -164,7 +165,9 @@ export const useVideoStore = defineStore('video', {
             })
             const hasSubtitle = this.video_raw.streams.find(v => v.codec_type === 'subtitle');
             if (hasSubtitle) {
+                this.subtitle_info.loading = true;
                 fetch(this.videoProtocol + path + `?type=subtitle&&index=${this.subtitle_info.index}&&streamIndex=${this.subtitle_info.streamIndex}`).then((res) => res.blob()).then((blob) => {
+                    this.subtitle_info.loading = false;
                     if (!this.save.readSave) {
                         this.subtitle_info.index = 0;
                         this.subtitle_info.streamIndex = this.getAudioStreamIndex('subtitle');

@@ -10,6 +10,8 @@ export const useThemeStore = defineStore('theme', {
         bottom: 0,
         left: 50,
         fontSize: 22,
+        letterSpacing: 0,
+        color: '',
     }),
     getters: {
     },

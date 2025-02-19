@@ -15,6 +15,7 @@ PCV pointchangevideo 无需网络、几乎能播放所有视频格式的本地�
 | [pinia](https://pinia.vuejs.org/zh/) | 持久化数据和状态管理 |
 | [ffmpeg](https://github.com/fluent-ffmpeg/node-fluent-ffmpeg) | 处理和操纵视频、音频、字幕流 |
 | [electron-vite](https://cn.electron-vite.org/) | 提供简易模板，便于操作，集中代码管理 |
+| [Naive UI](https://www.naiveui.com/) | 提供多个组件，简易开发 |
 
 ## 开发应用调试与打包
 

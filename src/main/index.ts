@@ -1,11 +1,11 @@
 import { app, BrowserWindow } from 'electron'
 
-import { electronApp, optimizer } from '@electron-toolkit/utils'
-// import { electronApp } from '@electron-toolkit/utils'
+// import { electronApp, optimizer } from '@electron-toolkit/utils'
+import { electronApp } from '@electron-toolkit/utils'
 
 import { createWindow, mainWinHandle } from './win_config';
 
-import { mainVideoHandle, protocolHandler, videoProtocol, videoSubtitleProtocol } from './protocol';
+import { mainVideoHandle, protocolHandler, videoProtocol } from './protocol';
 import { mainHanlde } from './video';
 
 
@@ -17,9 +17,7 @@ let mainWindow: BrowserWindow;
 
 app.whenReady().then(() => {
 
-  videoProtocol();
   // audioProtocol();
-  videoSubtitleProtocol()
   mainVideoHandle();
   // videoInfoProtocol();
   // Set app user model id for windows
@@ -28,13 +26,16 @@ app.whenReady().then(() => {
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+  // app.on('browser-window-created', (_, window) => {
+  //   optimizer.watchWindowShortcuts(window)
+  // })
 
   mainWindow = createWindow()
   mainWinHandle(mainWindow)
   mainHanlde(mainWindow)
+
+  videoProtocol(mainWindow);
+
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

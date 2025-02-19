@@ -1,7 +1,7 @@
 <script setup lang="ts">
-    import { NConfigProvider, NButton, NLayout, NLayoutContent, NLayoutHeader, NLayoutSider, NLayoutFooter, NPageHeader, NIcon, NList, NListItem, NEllipsis, NSlider, NFlex, NRadioGroup, NRadioButton, darkTheme, NInput, NTabs, NTabPane, NDescriptions, NDescriptionsItem, NSpace, NRadio, NSelect, NPopconfirm, NPopover } from 'naive-ui';
+    import { NConfigProvider, NButton, NLayout, NLayoutContent, NLayoutHeader, NLayoutSider, NLayoutFooter, NPageHeader, NIcon, NList, NListItem, NEllipsis, NSlider, NFlex, NRadioGroup, NRadioButton, darkTheme, NInput, NTabs, NTabPane, NDescriptions, NDescriptionsItem, NSpace, NRadio, NSelect, NPopconfirm, NPopover, NColorPicker, NTag } from 'naive-ui';
     import { Subtract16Regular, AppsList20Regular, SquareMultiple16Regular, Dismiss20Regular, Square20Regular, Speaker228Regular, SpeakerMute28Regular, Play16Filled, Previous20Filled, Next20Filled, Settings16Filled, DocumentAdd16Filled, Pause16Filled, FullScreenMaximize20Regular, Replay20Filled, FullScreenMinimize24Regular } from '@vicons/fluent'
-    import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+    import { computed, onMounted, onUnmounted, ref } from 'vue';
     import { useVideoStore } from './stores/video';
     import { useThemeStore } from './stores/theme';
     import subtitleSetting from './components/SubtitleSetting.vue';
@@ -11,34 +11,41 @@
     const videoRef = ref<HTMLVideoElement | null>(null);
     const audioRef = ref<HTMLAudioElement | null>(null);
 
+    let subtitleloading = ref(0);
+
     let isVideoHardwareDecode = ref(false);
     let isVSync = ref(false);
     let isASync = ref(false);
     async function canplayHandle(e: Event) {
         isVSync.value = true;
-        (e.target as HTMLVideoElement).pause();
+        if (isASync.value) {
+            (e.target as HTMLVideoElement).play();
+            audioRef.value?.play();
+            if (videoStore.save.readSave) {
+                videoStore.save.readSave = false;
+                progressChange(videoStore.save.video_info.currentTime);
+            }
+        } else {
+            (e.target as HTMLVideoElement).pause();
+        }
         isVideoHardwareDecode.value = await window.electron.ipcRenderer.invoke('on-change-video-decode');
     }
     let isAudioHardwareDecode = ref(false);
     async function audioLoadedmetadata(e: Event) {
         isASync.value = true;
-        (e.target as HTMLVideoElement).pause();
-        isAudioHardwareDecode.value = await window.electron.ipcRenderer.invoke('on-change-audio-decode');
-    }
-    watch([isVSync, isASync], () => {
-        if (isVSync.value && isASync.value) {
-            if (videoRef.value) {
-                videoRef.value.play();
-            }
-            if (audioRef.value) {
-                audioRef.value.play();
-            }
+        if (isVSync.value) {
+            (e.target as HTMLAudioElement).play();
+            videoRef.value?.play();
             if (videoStore.save.readSave) {
                 videoStore.save.readSave = false;
                 progressChange(videoStore.save.video_info.currentTime);
             }
+        } else {
+            (e.target as HTMLAudioElement).pause();
         }
-    })
+        isAudioHardwareDecode.value = await window.electron.ipcRenderer.invoke('on-change-audio-decode');
+    }
+
     let subtitleTextRow = ref(['']);
     function cuechangeHandle(e: Event) {
         let cues = (e.target as HTMLTrackElement).track.activeCues;
@@ -264,6 +271,9 @@
                 videoStore.save.video_info.currentTime = videoRef.value?.currentTime;
             }
         })
+        window.electron.ipcRenderer.on('on-subtitle-loading', (_e, p) => {
+            subtitleloading.value = p;
+        })
 
     })
     //header-win
@@ -349,6 +359,13 @@
             max: 1000,
             step: 100,
             value: 'fontWeight'
+        },
+        {
+            label: '字距',
+            min: -4,
+            max: 10,
+            step: 1,
+            value: 'letterSpacing'
         },
         {
             label: '透明度',
@@ -473,6 +490,8 @@
                             opacity: themeStore.opacity,
                             left: themeStore.left + '%',
                             bottom: themeStore.bottom + '%',
+                            letterSpacing: themeStore.letterSpacing + 'px',
+                            color: themeStore.color
                         }">
                             <div v-for="item in subtitleTextRow"> {{ item }} </div>
                         </div>
@@ -574,7 +593,7 @@
                                                 }}
                                             </div>
                                         </n-descriptions-item>
-                                        <n-descriptions-item label="采样率">
+                                        <!-- <n-descriptions-item label="采样率">
                                             <div style="text-wrap: wrap;">
                                                 {{
                                                     videoStore.audio_info.currentStream.sample_rate
@@ -587,7 +606,7 @@
                                                     videoStore.audio_info.currentStream.bit_rate
                                                 }}
                                             </div>
-                                        </n-descriptions-item>
+                                        </n-descriptions-item> -->
                                     </n-descriptions>
                                 </template>
                                 <label v-else>暂无操作</label>
@@ -607,8 +626,11 @@
                                             </n-radio>
                                         </n-space>
                                     </n-radio-group>
+                                    <div>选择字体：</div>
                                     <n-select placeholder="选择字体" v-model:value="fontFamily"
                                         :options="fontFamilyOptions" />
+                                    <div>选择字体颜色：</div>
+                                    <n-color-picker :actions="['clear']" v-model:value="themeStore.color" />
                                     <subtitleSetting v-for="item in subtitleSlider" v-bind="item" :key='item.value' />
                                     <n-button @click="() => themeStore.$reset()">恢复主题配置</n-button>
                                 </n-space>
@@ -691,8 +713,10 @@
                                     </template>
                                 </n-button>
                             </template>
-                            <span>记录</span>
+                            <span>上次关闭应用后的视频</span>
                         </n-popover>
+                        <n-tag v-show="videoStore.subtitle_info.loading">字幕已加载： {{ Math.floor(subtitleloading) }}%
+                        </n-tag>
                     </template>
                     <template #extra>
                         <n-popover trigger="hover" :show-arrow="false">
